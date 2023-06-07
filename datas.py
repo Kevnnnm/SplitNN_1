@@ -19,9 +19,17 @@ mnist_test_data = datasets.MNIST(
     transform = transform
 )
 
-data_emnist = datasets.EMNIST(
+emnist_train_data = datasets.EMNIST(
     root = "data",
     train = True,
+    download = True,
+    transform = transform,
+    split = "letters"
+)
+
+emnist_test_data = datasets.EMNIST(
+    root = "data",
+    train = False,
     download = True,
     transform = transform,
     split = "letters"
@@ -30,10 +38,16 @@ data_emnist = datasets.EMNIST(
 loaders = {
     'train' : DataLoader(mnist_train_data, batch_size=64, shuffle=True),
     'test'  : DataLoader(mnist_test_data, batch_size=64,  shuffle=True),
-    'attack' : DataLoader(data_emnist, batch_size=64,  shuffle=True),
+    'attack' : DataLoader(emnist_test_data, batch_size=64,  shuffle=True),
 }
 
 final_loaders = {
     'test'  : DataLoader(mnist_test_data, batch_size=1,  shuffle=True),
 }
 
+
+shadow_loaders = {
+    'train' : DataLoader(emnist_train_data, batch_size=64, shuffle=True),
+    'test'  : DataLoader(emnist_test_data, batch_size=64,  shuffle=True),
+    'attack' : DataLoader(emnist_test_data, batch_size=64,  shuffle=True),
+}
