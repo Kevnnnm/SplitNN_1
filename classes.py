@@ -135,31 +135,32 @@ def test(model, loader):
 
 
 #Attacker is trained on similar but not same EMNIST dataset of handwritten letters
-def attack(num_epochs, attack, model, optimizer, attack_loader, loader, test_loader):
-  for e in range(num_epochs):
-    running_loss = 0
-    for data, targets in attack_loader:
-      #print(data.shape)
-      data, targets = data.to('mps'), targets.to('mps')
-      data = data.reshape(data.shape[0], -1)
-      # Reset gradients
-      optimizer.zero_grad()
+def attack(num_epochs, attack, model, optimizer, attack_loader, loader, test_loader, shadow):
+  if shadow == True:
+    for e in range(num_epochs):
+      running_loss = 0
+      for data, targets in attack_loader:
+        #print(data.shape)
+        data, targets = data.to('mps'), targets.to('mps')
+        data = data.reshape(data.shape[0], -1)
+        # Reset gradients
+        optimizer.zero_grad()
 
-      # First, get outputs from the target model
-      target_outputs = model.first_part(data)
+        # First, get outputs from the target model
+        target_outputs = model.first_part(data)
 
-      # Next, recreate the data with the attacker
-      attack_outputs = attack(target_outputs)
+        # Next, recreate the data with the attacker
+        attack_outputs = attack(target_outputs)
 
-      # We want attack outputs to resemble the original data
-      loss = ((data - attack_outputs)**2).mean()
+        # We want attack outputs to resemble the original data
+        loss = ((data - attack_outputs)**2).mean()
 
-      # Update the attack model
-      loss.backward()
-      optimizer.step()
-      running_loss += loss.item()
-    else:
-      print("Epoch {} - Training loss: {}".format(e + 1, running_loss/len(attack_loader)))
+        # Update the attack model
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item()
+      else:
+        print("Epoch {} - Training loss: {}".format(e + 1, running_loss/len(attack_loader)))
 
   for i, (data, targets) in enumerate(test_loader):
     data, targets = data.to('mps'), targets.to('mps')
