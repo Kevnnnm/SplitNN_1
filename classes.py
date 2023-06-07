@@ -13,19 +13,20 @@ import math
 input_size = 784
 hidden_sizes = [500, 128]
 output_size = 10
-layer_collab = 500
+cut_layer = 500
 
+#SplitNN simulating client side before cut layer and server side after first layer
 class SplitNN(nn.Module):
   def __init__(self):
     super(SplitNN, self).__init__()
     self.first_part = nn.Sequential(
       nn.Linear(input_size, hidden_sizes[0]),
       nn.ReLU(),
-      nn.Linear(hidden_sizes[0], layer_collab),
+      nn.Linear(hidden_sizes[0], cut_layer),
       nn.ReLU(),
       )
     self.second_part = nn.Sequential(
-      nn.Linear(layer_collab, hidden_sizes[1]),
+      nn.Linear(cut_layer, hidden_sizes[1]),
       nn.Linear(hidden_sizes[1], output_size),
       nn.LogSoftmax(dim=1)
     )
@@ -33,7 +34,7 @@ class SplitNN(nn.Module):
   def forward(self, x):
     return self.second_part(self.first_part(x))
 
-  
+#Malicious server that will attack after receiving cut layer
 class Attacker(nn.Module):
   def __init__(self):
     super(Attacker, self).__init__()
@@ -50,7 +51,7 @@ class Attacker(nn.Module):
 
 
 
-
+#Train the client model on the NMIST dataset of handwritten digits
 def train(num_epochs, model, loader, loss_fn, optimizer):
     device = 'mps'
         
@@ -100,6 +101,8 @@ def test(model, loader):
   print("Number Of Images Tested =", all_count)
   print("\nModel Accuracy =", (correct_count/all_count))
 
+
+#Attacker is trained on similar but not same EMNIST dataset of handwritten letters
 def attack(num_epochs, attack, model, optimizer, attack_loader, loader, test_loader):
   for e in range(num_epochs):
     running_loss = 0
