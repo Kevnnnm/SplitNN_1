@@ -28,8 +28,8 @@ optimizer_attack = optim.Adam(attack.parameters(), lr = 1e-3)
 classes.attack(epochs, attack, model, optimizer_attack, attack_loader, testloader, final_loader)
 
 #save models
-torch.save(model.state_dict(), "SplitNN_model.pth")
+torch.save(model.state_dict(), "Trained_models/SplitNN_model.pth")
 print("Saved PyTorch Model State to SplitNN_model.pth")
 
-torch.save(attack.state_dict(), "attack_1_model.pth")
+torch.save(attack.state_dict(), "Trained_models/attack_1_model.pth")
 print("Saved PyTorch Model State to attack_1_model.pth")
