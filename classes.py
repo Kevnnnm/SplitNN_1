@@ -8,6 +8,9 @@ from time import time
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import mean_squared_error as mse
+
 #-------------------------------------------------------
 #initial Client Server normal Split Learning Model
 #-------------------------------------------------------
@@ -134,40 +137,79 @@ def test(model, loader):
   print("\nModel Accuracy =", (correct_count/all_count))
 
 
-#Attacker is trained on similar but not same EMNIST dataset of handwritten letters
-def attack(num_epochs, attack, model, optimizer, attack_loader, loader, test_loader, shadow):
-  if shadow == True:
-    for e in range(num_epochs):
-      running_loss = 0
-      for data, targets in attack_loader:
-        #print(data.shape)
-        data, targets = data.to('mps'), targets.to('mps')
-        data = data.reshape(data.shape[0], -1)
-        # Reset gradients
-        optimizer.zero_grad()
+def attack(num_epochs, attack, model, optimizer, attack_loader, test_loader):
+  for e in range(num_epochs):
+    running_loss = 0
+    for data, targets in attack_loader:
+      #print(data.shape)
+      data, targets = data.to('mps'), targets.to('mps')
+      data = data.reshape(data.shape[0], -1)
+      # Reset gradients
+      optimizer.zero_grad()
 
-        # First, get outputs from the target model
-        target_outputs = model.first_part(data)
+      # First, get outputs from the target model
+      target_outputs = model.first_part(data)
 
-        # Next, recreate the data with the attacker
-        attack_outputs = attack(target_outputs)
+      # Next, recreate the data with the attacker
+      attack_outputs = attack(target_outputs)
 
-        # We want attack outputs to resemble the original data
-        loss = ((data - attack_outputs)**2).mean()
+      # We want attack outputs to resemble the original data
+      loss = ((data - attack_outputs)**2).mean()
 
-        # Update the attack model
-        loss.backward()
-        optimizer.step()
-        running_loss += loss.item()
-      else:
-        print("Epoch {} - Training loss: {}".format(e + 1, running_loss/len(attack_loader)))
-
+      # Update the attack model
+      loss.backward()
+      optimizer.step()
+      running_loss += loss.item()
+    else:
+      print("Epoch {} - Training loss: {}".format(e + 1, running_loss/len(attack_loader)))
+  total_mse, total_ssim = 0, 0
   for i, (data, targets) in enumerate(test_loader):
     data, targets = data.to('mps'), targets.to('mps')
     #print(data.shape)
     data = data.reshape(data.shape[0], -1)
     target_outputs = model.first_part(data)
     recreated_data = attack(target_outputs)
+
+    data_np = data.cpu().numpy()
+    recreated_data_np = recreated_data.cpu().detach().numpy()
+
+    total_mse += mse(data_np, recreated_data_np)
+    total_ssim += ssim(data_np, recreated_data_np, data_range = 1.0)
+    
+    if i < 3:
+
+      # print(data_np.shape)
+      # print(recreated_data_np.shape)
+
+      # Display the original data
+      plt.imshow(data_np[-1].reshape(28, 28), cmap='gray')
+      plt.title("Original Data")
+      plt.show()
+
+      # Display the reconstructed data
+      plt.imshow(recreated_data_np[-1].reshape(28, 28), cmap='gray')
+      plt.title("Reconstructed Data")
+      plt.show()
+  print(f"AVG MSE: {total_mse / len(test_loader)}")
+  print(f"AVG SSIM: {total_ssim / len(test_loader)}")
+        
+def shadow_attack(attack, model, test_loader):
+  total_mse, total_ssim = 0, 0
+  for i, (data, targets) in enumerate(test_loader):
+    data, targets = data.to('mps'), targets.to('mps')
+    #print(data.shape)
+    data = data.reshape(data.shape[0], -1)
+    target_outputs = model.first_part(data)
+    recreated_data = attack(target_outputs)
+    
+    data_np = data.cpu().numpy()
+    recreated_data_np = recreated_data.cpu().detach().numpy()
+
+    total_mse += mse(data_np, recreated_data_np)
+    total_ssim += ssim(data_np, recreated_data_np, data_range = 1.0) #look into this more
+    
+
+
     if i < 3:
       # Convert the tensors to numpy arrays
       data_np = data.cpu().numpy()
@@ -185,5 +227,6 @@ def attack(num_epochs, attack, model, optimizer, attack_loader, loader, test_loa
       plt.imshow(recreated_data_np[-1].reshape(28, 28), cmap='gray')
       plt.title("Reconstructed Data")
       plt.show()
-        
+  print(f"AVG MSE: {total_mse / len(test_loader)}")
+  print(f"AVG SSIM: {total_ssim / len(test_loader)}")
 

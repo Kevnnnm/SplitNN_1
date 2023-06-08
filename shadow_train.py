@@ -34,39 +34,37 @@ def train_shadow_attack():
     attack = classes.Attacker().to('mps')
     #attack.load_state_dict(torch.load("Trained_models/attack_1_model.pth"))
     attack_loader = datas.shadow_loaders['attack']
-    final_loader = datas.shadow_loaders['test']
 
     optimizer_attack = optim.Adam(attack.parameters(), lr = 1e-3)
-    classes.attack(epochs, attack, shadow_model, optimizer_attack, attack_loader, testloader, final_loader, True)
+    classes.attack(epochs, attack, shadow_model, optimizer_attack, attack_loader, testloader)
 
     # save models
-    torch.save(shadow_model.state_dict(), "Trained_models/Shadow_Model.pth")
+    torch.save(shadow_model.state_dict(), "Trained_models/Shadow_Model_EMNIST_1.pth")
     print("Saved PyTorch Model State to SplitNN_model.pth")
 
-    torch.save(attack.state_dict(), "Trained_models/attack_1_model.pth")
+    torch.save(attack.state_dict(), "Trained_models/attack_model_EMNIST_1.pth")
     print("Saved PyTorch Model State to attack_1_model.pth")
 
 def attack_on_shadow():
     trainloader = datas.loaders['train']
     testloader = datas.loaders['test']
 
-    shadow_model = classes.ShadowNN().to('mps')
+    model = classes.SplitNN().to('mps')
     attack = classes.Attacker().to('mps')
 
-    shadow_model.load_state_dict(torch.load("Trained_models/shadow_model.pth"))
-    attack.load_state_dict(torch.load("Trained_models/attack_1_model.pth"))
+    model.load_state_dict(torch.load("Trained_models/SplitNN_model_MNIST_1.pth"))
+    attack.load_state_dict(torch.load("Trained_models/attack_model_EMNIST_1.pth"))
     optimizer_attack = optim.Adam(attack.parameters(), lr = 1e-3)
-    optimizer_shadow = optim.SGD(shadow_model.parameters(), lr=0.01, momentum=0.95)
-    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
+    criterion = nn.NLLLoss()
     
-    
-    epochs = 12
+    #epochs = 12
 
-    #test the private data on the shadow_model
-    classes.train(epochs, shadow_model, trainloader, criterion, optimizer_shadow)
-    classes.test(shadow_model, testloader)
+    #run original client model with NMIST data (to verify model is correct one)
+    classes.test(model, testloader)
 
-    classes.attack(epochs, attack, shadow_model, optimizer_attack, trainloader, testloader, trainloader, False)
+    #test our attacker on the client model
+    classes.shadow_attack(attack, model, testloader)
 
 #train_shadow_attack()
 
